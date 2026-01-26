@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Haustür Gate</h1>
+  <h1>Insane Haustür Gate</h1>
   <p><i>Smarte Zutrittskontrolle mit biometrischer und NFC-Validierung</i></p>
 </div>
 
