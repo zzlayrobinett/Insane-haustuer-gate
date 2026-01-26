@@ -1,0 +1,460 @@
+# --- SYSTEM-EINSTELLUNGEN ---
+esphome:
+  name: "haustur-gate"
+  friendly_name: Haustür Gate
+  on_boot:
+    priority: -10
+    then:
+      - script.execute: led_idle
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32_REV_MIN_3: "y"
+
+# --- GLOBALE VARIABLEN ---
+globals:
+  - id: master_tag_uid
+    type: std::string
+    initial_value: !secret master_tag_id  # In Secrets verschoben
+  - id: whitelist_str
+    type: std::string
+    restore_value: yes
+    initial_value: '""'
+  - id: learn_mode
+    type: bool
+    initial_value: 'false'
+
+# --- NETZWERK & SICHERHEIT ---
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Hautur-Gate Fallback Hotspot"
+    password: !secret wifi_ap_password
+
+logger:
+captive_portal:
+
+# --- HARDWARE KOMMUNIKATION ---
+uart:
+  - id: uart_fingerprint
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 57600
+
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+# --- FINGERPRINT LOGIK (R503) ---
+fingerprint_grow:
+  id: r503
+  uart_id: uart_fingerprint
+  sensing_pin: GPIO33
+  on_finger_scan_matched:
+    - lambda: 'id(haustuerzugang).publish_state(true);'
+    - script.execute: led_success
+    - script.execute: beep_success
+    - delay: 2s
+    - lambda: 'id(haustuerzugang).publish_state(false);'
+  
+  on_enrollment_scan:
+    - lambda: |-
+        char buf[32];
+        sprintf(buf, "Scan %d von 2...", scan_num);
+        id(finger_status).publish_state(buf);
+
+  on_enrollment_done:
+    - script.execute: led_success
+    - script.execute: beep_success
+    - lambda: |-
+        id(finger_status).publish_state("Erfolgreich!");
+        id(r503).update(); // Hardware-Update triggern
+    - delay: 2s
+    - lambda: 'id(finger_status).publish_state("Bereit");'
+
+  on_enrollment_failed: # Korrigiert von 'failed' zu 'error'
+    - script.execute: led_error
+    - script.execute: beep_error
+    - lambda: |-
+        id(finger_status).publish_state("Abgebrochen/Fehler");
+    - delay: 2s
+    - lambda: 'id(finger_status).publish_state("Bereit");'
+# --- SENSOREN ---
+sensor:
+  - platform: fingerprint_grow
+    fingerprint_count:
+      name: "Gespeicherte Finger"
+      id: finger_count_val # Interne ID für die Berechnung
+    last_finger_id:
+      name: "Letzte Finger ID"
+    last_confidence:
+      name: "Letztes Vertrauenslevel"
+
+  - platform: dht
+    pin: GPIO4
+    model: DHT22
+    temperature:
+      name: "Außen Temperatur"
+      id: raw_temp
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+        - lambda: return x + id(temp_offset).state;
+    humidity:
+      name: "Außen Luftfeuchtigkeit"
+      id: raw_hum
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+        - lambda: return x + id(hum_offset).state;
+    update_interval: 60s
+
+  - platform: template
+    name: "Anzahl gespeicherter Tags"
+    id: whitelist_count
+    icon: "mdi:account-group"
+    unit_of_measurement: "Tags"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      std::string s = id(whitelist_str);
+      if (s.empty()) return 0.0f;
+      int dashes = std::count(s.begin(), s.end(), '-');
+      return (float)(dashes / 3);
+    update_interval: 30s
+
+# --- BINÄRE SENSOREN ---
+binary_sensor:
+  - platform: template
+    name: "Haustürzugang"
+    id: haustuerzugang
+    device_class: lock
+
+  - platform: status
+    name: "Hautür Gate Status"
+    id: system_status
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Haustür Kontakt"
+    id: door_contact
+    device_class: door
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Haustür Button Sensor"
+    id: haustur_button_sensor
+    on_press:
+      then:
+        - button.press: haustur_button
+
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Haustür Button 2 Sensor"
+    id: haustur_button_2_sensor
+    on_press:
+      then:
+        - button.press: haustur_button_2
+
+# --- TEXT-SENSOREN ---
+text_sensor:
+  - platform: template
+    name: "Gespeicherte UIDs"
+    id: whitelist_display
+    update_interval: never
+    lambda: 'return id(whitelist_str);'
+
+  - platform: template
+    name: "Lernmodus Status (NFC)"
+    id: learn_status
+    icon: "mdi:school"
+    lambda: |-
+      if (id(learn_mode)) return {"Aktiv - Karte auflegen..."};
+      return {"Bereit"};
+
+  - platform: template
+    name: "Fingerprint Status" # NEU: Status für Fingerabdruck
+    id: finger_status
+    icon: "mdi:fingerprint"
+    lambda: 'return {"Bereit"};'
+
+  - platform: template
+    name: "Fingerprint Speicher-Übersicht"
+    id: fingerprint_usage
+    icon: "mdi:memory"
+    update_interval: 30s
+    lambda: |-
+      // FIX: Prüfen, ob der Wert gültig ist (verhindert 2147483647)
+      if (!id(finger_count_val).has_state()) return {"Lade Daten..."};
+      
+      int count = (int)id(finger_count_val).state;
+      if (count < 0 || count > 200) return {"Initialisiere..."};
+      
+      char buf[64];
+      sprintf(buf, "%d von 200 belegt (Nächste ID: %d)", count, count + 1);
+      return {buf};
+
+# --- NUMERISCHE EINSTELLUNGEN ---
+number:
+  - platform: template
+    name: "Temperatur Offset"
+    id: temp_offset
+    icon: "mdi:thermometer-plus"
+    unit_of_measurement: "°C"
+    min_value: -10
+    max_value: 10
+    step: 0.1
+    mode: box
+    restore_value: yes
+    initial_value: 0.0
+    optimistic: true
+
+  - platform: template
+    name: "Luftfeuchtigkeit Offset"
+    id: hum_offset
+    icon: "mdi:water-percent"
+    unit_of_measurement: "%"
+    min_value: -20
+    max_value: 20
+    step: 1
+    mode: box
+    restore_value: yes
+    initial_value: 0
+    optimistic: true
+
+# --- NFC READER LOGIK (PN532) ---
+pn532_spi:
+  cs_pin: GPIO5
+  update_interval: 1s
+  on_tag:
+    then:
+      - lambda: |-
+          std::string current_uid = "";
+          for (size_t i = 0; i < tag.get_uid().size(); i++) {
+              char buf[3];
+              sprintf(buf, "%02X", tag.get_uid()[i]);
+              current_uid += buf;
+              if (i < tag.get_uid().size() - 1) current_uid += "-";
+          }
+          
+          if (current_uid == id(master_tag_uid)) {
+            id(learn_mode) = !id(learn_mode);
+            if (id(learn_mode)) {
+              id(beep_success).execute();
+              id(led_success).execute();
+              id(learn_mode_timeout).execute(); 
+            } else {
+              id(learn_mode_timeout).stop();
+              id(beep_error).execute();
+              id(led_error).execute();
+            }
+            // FIX: Nutzt jetzt den Text-Sensor statt den gelöschten Switch
+            id(learn_status).publish_state(id(learn_mode) ? "Aktiv - Karte auflegen..." : "Bereit");
+            return;
+          }
+
+          if (id(learn_mode)) {
+            if (id(whitelist_str).find(current_uid) == std::string::npos) {
+              if (!id(whitelist_str).empty()) id(whitelist_str) += ",";
+              id(whitelist_str) += current_uid;
+              id(beep_success).execute();
+              id(led_success).execute();
+              id(whitelist_display).update();
+              id(whitelist_count).update();
+            }
+            id(learn_mode) = false;
+            id(learn_status).publish_state("Bereit");
+            id(learn_mode_timeout).stop();
+            return;
+          }
+
+          if (id(whitelist_str).find(current_uid) != std::string::npos) {
+            ESP_LOGI("nfc_gate", "Zugriff gewährt: %s", current_uid.c_str());
+            id(haustuerzugang).publish_state(true);
+            id(beep_success).execute();
+            
+            App.scheduler.set_timeout(id(haustuerzugang), "auto_close", 2000, []() {
+                id(haustuerzugang).publish_state(false);
+                ESP_LOGD("nfc_gate", "Sensor zurückgesetzt.");
+            });
+          } else {
+            ESP_LOGW("nfc_gate", "Zugriff verweigert: %s", current_uid.c_str());
+            id(beep_error).execute();
+            id(led_error).execute();
+            id(haustuerzugang).publish_state(false);
+          }
+
+# --- AUSGÄNGE ---
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: buzzer_output
+    inverted: true
+
+# --- SKRIPTE ---
+script:
+  - id: beep_success
+    mode: restart
+    then:
+      - output.turn_on: buzzer_output
+      - delay: 150ms
+      - output.turn_off: buzzer_output
+
+  - id: beep_error
+    mode: restart
+    then:
+      - output.turn_on: buzzer_output
+      - delay: 800ms
+      - output.turn_off: buzzer_output
+
+  - id: learn_mode_timeout
+    mode: restart 
+    then:
+      - delay: 30s
+      - if:
+          condition: { lambda: 'return id(learn_mode);' }
+          then:
+            - globals.set: { id: learn_mode, value: 'false' }
+            - lambda: 'id(learn_status).publish_state("Bereit");' 
+            - logger.log: "Timeout beendet Lernmodus."
+            - script.execute: beep_error
+
+  - id: led_idle
+    then:
+      - fingerprint_grow.aura_led_control:
+          state: ALWAYS_ON
+          speed: 0
+          color: BLUE
+          count: 0
+
+  - id: led_success
+    then:
+      - fingerprint_grow.aura_led_control:
+          state: FLASHING
+          speed: 25
+          color: GREEN
+          count: 3
+      - delay: 2s
+      - script.execute: led_idle
+
+  - id: led_error
+    then:
+      - fingerprint_grow.aura_led_control:
+          state: FLASHING
+          speed: 25
+          color: RED
+          count: 3
+      - delay: 2s
+      - script.execute: led_idle
+
+# --- BEDIENELEMENTE ---
+switch:
+  - platform: output
+    name: "Haustür Summer"
+    output: buzzer_output
+    id: door_buzzer
+    icon: "mdi:bullhorn"
+
+button:
+  - platform: template
+    name: "Whitelist komplett löschen"
+    id: whitelist_delete_button
+    icon: "mdi:delete-forever"
+    on_press:
+      - globals.set: { id: whitelist_str, value: '""' }
+      - lambda: |-
+          id(whitelist_display).update();
+          id(whitelist_count).update();
+          id(learn_status).publish_state("Bereit");
+      - script.execute: beep_error
+
+  - platform: template
+    name: "Nächsten Tag anlernen"
+    id: learn_mode_button
+    icon: "mdi:tag-plus"
+    on_press:
+      - globals.set: { id: learn_mode, value: 'true' }
+      - script.execute: learn_mode_timeout
+      - component.update: learn_status 
+
+  - platform: template
+    name: "Neuen Finger anlernen (Auto-ID)"
+    id: enroll_finger_button
+    icon: "mdi:fingerprint"
+    on_press:
+      - if:
+          condition:
+            lambda: 'return id(finger_count_val).has_state();'
+          then:
+            - lambda: 'id(finger_status).publish_state("Finger auflegen...");'
+            - fingerprint_grow.enroll:
+                finger_id: !lambda "return (int)id(finger_count_val).state + 1;"
+                num_scans: 2
+          else:
+            - lambda: 'id(finger_status).publish_state("Sensor lädt noch...");'
+
+  - platform: template
+    name: "Haustür Button"
+    id: haustur_button
+    icon: "mdi:gesture-tap-button"
+    on_press:
+      then:
+        - script.execute: beep_success
+
+  - platform: template
+    name: "Haustür Button 2"
+    id: haustur_button_2
+    icon: "mdi:gesture-tap-button"
+    on_press:
+      then:
+        - script.execute: beep_success
+# --- SYSTEM-ÜBERWACHUNG ---
+interval:
+  - interval: 4s
+    then:
+      - if:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - fingerprint_grow.aura_led_control:
+                state: ALWAYS_ON
+                speed: 0
+                color: RED
+                count: 0
+            - delay: 3s
+            - fingerprint_grow.aura_led_control:
+                state: ALWAYS_OFF
+                speed: 0
+                color: RED 
+                count: 0
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(system_status).state;'
+                then:
+                  - script.execute: led_idle
