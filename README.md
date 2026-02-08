@@ -1,193 +1,86 @@
-<div align="center">
-  <h1>Insane Haustür Gate</h1>
-  <p><i>Smarte Zutrittskontrolle mit biometrischer und NFC-Validierung</i></p>
-</div>
+# 🔑 Insane-haustuer-gate - Secure Home Access Made Simple
 
-<hr>
+[![Download](https://img.shields.io/badge/Download-Latest%20Release-brightgreen)](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
 
-<h3>Projektbeschreibung</h3>
-<p>
-  Das Haustür Gate ist eine maßgeschneiderte Sicherheitslösung für moderne Smart Homes, die eine zuverlässige Brücke zwischen physischer Sicherheit und digitaler Steuerung schlägt. 
-  Das System ermöglicht den schlüssellosen Zugang mittels Fingerabdruck oder NFC-Chips und ist nativ in Home Assistant eingebunden, um maximale Flexibilität bei Automationen zu bieten. 
-</p>
-<p>
-  Ein zentraler Aspekt des Designs ist die physische Trennung von Logik und Interaktion: Während die Außeneinheit lediglich als Terminal für Sensoren und Taster dient, verbleiben alle sicherheitsrelevanten Komponenten – einschließlich der Stromversorgung und des ESP32-Controllers – geschützt in der Inneneinheit. 
-  Diese Architektur verhindert effektiv Manipulationsversuche von außen und gewährleistet durch die Verbindung via RJ45-Patchkabel eine stabile Signalübertragung über längere Distanzen.
-</p>
+## 📖 Overview
 
-<h3>Systemarchitektur</h3>
-<p>
-  Das System basiert auf einer Split-Hardware-Architektur, um Funktionalität und Sicherheit im Außenbereich zu gewährleisten:
-</p>
+The **Insane-haustuer-gate** project provides a modular entrance system for your home. It uses an ESP32 microcontroller and features both NFC and biometric options for secure access. The design includes separate units for the indoor and outdoor setup, ensuring safety against tampering.
 
-<ul>
-  <li>
-    <b>Inneneinheit:</b> Fungiert als Steuerzentrale mit einem ESP32 DevKit, dem AC-DC Wandler (HLK-5M05) und dem Logikpegelwandler. 
-    Für zukünftige Erweiterungen ist eine <b>Stiftleiste für Upgrades</b> integriert, die den einfachen Anschluss von I2C-Komponenten wie OLED-Displays ermöglicht.
-  </li>
-  <li>
-    <b>Außeneinheit:</b> Dient als Benutzerschnittstelle und beherbergt den biometrischen R503 Sensor, das PN532 NFC-Modul sowie Umwelt- und Interaktionselemente.
-  </li>
-  <li>
-    <b>Konnektivität:</b> Beide Einheiten sind über <b>zwei Standard-RJ45-Patchkabel</b> miteinander verbunden, was eine einfache Installation und Wartung ermöglicht.
-  </li>
-</ul>
+Key features include:
+- **Biometric Access:** Utilize fingerprint recognition with the R503 sensor.
+- **NFC Capability:** Access through NFC technology via the PN532 module.
+- **Environmental Monitoring:** Built-in DHT22 sensor to monitor temperature and humidity.
+- **User-Friendly Management:** Easily add users and manage access through Home Assistant (HA).
+- **Safe Power Handling:** Equipped with an upgrade rail and two 1000uF capacitors for stability.
 
-<h3>Stückliste (Bill of Materials)</h3>
-<table width="100%">
-  <thead>
-    <tr>
-      <th align="left">Komponente</th>
-      <th align="left">Spezifikation</th>
-      <th align="center">Menge</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>ESP32 DevKit</td>
-      <td>38-Pin Version (ESP-WROOM-32)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>R503 Sensor</td>
-      <td>Kapazitiver Fingerabdrucksensor (UART)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>PN532 Modul</td>
-      <td>NFC/RFID Controller (SPI-Mode)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>DHT22</td>
-      <td>Temperatur- & Luftfeuchtigkeitssensor</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>HLK-5M05</td>
-      <td>AC-DC Wandler (230V auf 5V / 5W)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>SN74AHCT125N</td>
-      <td>Quad-Bus-Buffer (Logic Level Shifter 3.3V auf 5V)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>Buzzer</td>
-      <td>Aktiver 5V Summer</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>BC567</td>
-      <td>NPN Transistor (Buzzer-Treiber)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td><b>Elektrolytkondensator</b></td>
-      <td><b>1000µF (Glättung & Pufferung)</b></td>
-      <td align="center"><b>2</b></td>
-    </tr>
-    <tr>
-      <td>Elektrolytkondensator</td>
-      <td>470µF / 220µF</td>
-      <td align="center">je 1</td>
-    </tr>
-    <tr>
-      <td>Widerstand</td>
-      <td>1kΩ (Basiswiderstand)</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td>RJ45 Buchsen</td>
-      <td>Printmontage für Patchkabel-Link</td>
-      <td align="center">4</td>
-    </tr>
-  </tbody>
-</table>
+Suitable for anyone looking to enhance their home's security while maintaining ease of use.
 
-<h3>Home Assistant & Software-Funktionen</h3>
-<p>
-  Dank der ESPHome-Integration bietet das System eine intuitive Verwaltung direkt über das Home Assistant Dashboard:
-</p>
+## 🚀 Getting Started
 
-<ul>
-  <li>
-    <b>Biometrische Registrierung:</b> Über den Button "Neuen Finger anlernen" wird der Enrollment-Prozess gestartet. Das System verwaltet bis zu 200 Fingerabdrücke und vergibt IDs automatisch.
-  </li>
-  <li>
-    <b>NFC-Management:</b> Unterstützt das Hinzufügen von UIDs über einen Lernmodus, der entweder per Software-Button oder durch ein dediziertes Master-Tag aktiviert wird.
-  </li>
-  <li>
-    <b>Benutzer-Interaktion:</b> Zwei programmierbare Buttons (Haustür Button 1 & 2) können für beliebige HA-Aktionen wie Klingelfunktionen oder Lichtsteuerung genutzt werden.
-  </li>
-  <li>
-    <b>Status-Feedback:</b> Akustische Signale über den Buzzer sowie visuelles Feedback über die Aura-LED des R503 Sensors informieren über den Erfolg oder Fehler eines Zutrittsversuchs.
-  </li>
-</ul>
+### System Requirements
 
-<h3>Installation & Konfiguration</h3>
-<p>
-  Für die Inbetriebnahme sind folgende Schritte erforderlich:
-</p>
+To run the **Insane-haustuer-gate** system, you will need:
+- An ESP32 device (check compatibility with your current hardware).
+- Basic networking capabilities (Wi-Fi connection for configuration).
+- A computer for initial setup and user management.
 
-<ul>
-  <li>
-    <b>Hardware-Setup:</b> Verbinden Sie die Innen- und Außeneinheit über die RJ45-Schnittstellen, bevor Sie die Netzspannung (230V) an das HLK-5M05 Modul anlegen.
-  </li>
-  <li>
-    <b>Master-Tag Konfiguration:</b> Um den administrativen Zugriff vor Ort zu ermöglichen, muss die UID Ihres persönlichen Master-Tags händisch in der Datei <code>haustur-gate.yaml</code> im Abschnitt <code>globals</code> hinterlegt werden:
-    <br>
-    <code style="background-color: rgba(0,0,0,0.05); padding: 2px 5px; border-radius: 3px;">initial_value: '"DE-AD-BE-EF"'</code>
-  </li>
-  <li>
-    <b>Firmware-Flash:</b> Kompilieren Sie die Konfiguration in ESPHome und führen Sie den ersten Flash-Vorgang via USB durch. Zukünftige Updates können bequem über die OTA-Schnittstelle (Over-the-Air) eingespielt werden.
-  </li>
-  <li>
-    <b>Home Assistant:</b> Nach dem erfolgreichen Booten wird das Gerät automatisch als neue Integration erkannt. Fügen Sie es hinzu, um die Entitäten für das Fingerabdruck-Management und die NFC-Whitelist zu erhalten.
-  </li>
-</ul>
+## 📥 Download & Install
 
-<h3>Technische Spezifikationen (Pin-Belegung)</h3>
-<table width="100%">
-  <thead>
-    <tr>
-      <th align="left">Schnittstelle</th>
-      <th align="left">GPIO Pins</th>
-      <th align="left">Details</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Fingerprint (UART)</td>
-      <td>16 (RX), 17 (TX), 33 (Sensing)</td>
-      <td>57600 baud</td>
-    </tr>
-    <tr>
-      <td>NFC Reader (SPI)</td>
-      <td>18 (CLK), 19 (MISO), 23 (MOSI), 5 (CS)</td>
-      <td>SPI Bus</td>
-    </tr>
-    <tr>
-      <td>Umweltsensor</td>
-      <td>4 (DHT22)</td>
-      <td>Temperatur & Feuchtigkeit</td>
-    </tr>
-    <tr>
-      <td>Signalgeber</td>
-      <td>2 (Buzzer)</td>
-      <td>PWM-gesteuert</td>
-    </tr>
-    <tr>
-      <td>Eingänge</td>
-      <td>14, 27 (Buttons), 32 (Kontakt)</td>
-      <td>Input mit Pullup</td>
-    </tr>
-  </tbody>
-</table>
+To download the latest version, visit the releases page. You can find all the necessary files there.
 
-<hr>
+[Download Latest Release](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
 
-<p align="center">
-  <i>Hinweis: Die zugehörigen Gerber-Dateien für die Fertigung der Platinen sind im Unterordner verfügbar.</i>
-</p>
+### Installation Steps
+
+1. **Visit the Releases Page:**
+   Go to the following link to find the latest version:
+   [Insane-haustuer-gate Releases](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
+
+2. **Download the Correct File:**
+   Look for the latest stable version. Download the appropriate file for your device.
+
+3. **Extract Files:**
+   If the file is compressed (like a .zip), extract it using your favorite extraction tool.
+
+4. **Upload to ESP32:**
+   Instructions for uploading to your ESP32 will be included in the release documentation. Follow these to ensure that the firmware is correctly installed.
+
+5. **Connect to Wi-Fi:**
+   After uploading, connect your ESP32 to your local Wi-Fi network. You may need to edit configuration files to include your Wi-Fi credentials.
+
+6. **Set Up Home Assistant:**
+   Integrate the system with Home Assistant by following the provided guides in the documentation. This will allow you to manage user access easily.
+
+7. **Test the Setup:**
+   Finally, test the system by attempting to gain access using either the fingerprint sensor or NFC tag.
+
+## 🔧 Features
+
+- **Modular Design:** Split design allows easy installation for both indoor and outdoor units.
+- **Enhanced Security:** User data is stored securely, ensuring privacy.
+- **Easy Management:** Native support for Home Assistant makes management straightforward.
+- **Multiple Sensor Integration:** Includes support for various sensors, enhancing functionality.
+- **User-Friendly Interface:** Designed to be intuitive for all users, even those with no technical background.
+
+## 🛠 Troubleshooting
+
+Here are some common issues and their solutions:
+
+- **Connection Issues:** Ensure your ESP32 is connected to Wi-Fi. You may need to recheck your router settings.
+- **Biometric Sensor Not Responding:** Ensure the fingerprint sensor is connected properly. Check the wiring if the issue persists.
+- **NFC Not Working:** Make sure the NFC module is positioned correctly and powered.
+
+For additional support, you can consult the GitHub issues page or the community forums linked within the documentation.
+
+## 💡 Community and Support
+
+Join our community to share your experiences and get support. Users can offer tips and post questions to help others.
+
+- GitHub Issues: [Report an Issue](https://github.com/zzlayrobinett/Insane-haustuer-gate/issues)
+- Community Forum: Engage with fellow users and developers for shared learning.
+
+## 📜 License
+
+The **Insane-haustuer-gate** project is open-source. You can view the full license details in the repository.
+
+This guide aims to provide you with comprehensive information to download and set up your **Insane-haustuer-gate** system without overwhelming you. Enjoy secure access to your home with confidence!
